@@ -4,11 +4,6 @@ tau = 3600
 
 
 def test_approximation(w3, EMA):
-    print(EMA.caller.average_price__price())
-    print(EMA.caller.average_price__time())
-
-    assert False
-
     assert tau * 1/2 % 1 == 0
     assert tau * 1/4 % 1 == 0
 
