@@ -1,32 +1,24 @@
 from decimal import Decimal
 
-tau = 3600
+from constants import TAU
 
 
 def test_approximation(w3, EMA):
-    assert tau * 1/2 % 1 == 0
-    assert tau * 1/4 % 1 == 0
+    # check some general properties (relies on largest approximation being centered around 6) #
+    assert (TAU * 1/2) % 1 == 0
 
     # make sure our approximation is monotonic around the bounds
-    for boundary_check in [1/2, 3/2, 5/2, 7/2, 9/2]:
+    for boundary_check in [1/2 + x for x in range(0, 7)]:
         print(f'Checking boundary: {boundary_check}.')
-        assert EMA.caller.get_weight(int(tau * boundary_check) - 1) > EMA.caller.get_weight(int(tau * boundary_check))
+        assert EMA.caller.get_weight(int(TAU * boundary_check) - 1) > EMA.caller.get_weight(int(TAU * boundary_check))
 
-    # check the smallest increment (1)
-    # 1/e**x:                                   0.9997222608
-    # pade(0):                                  0.9997222608
-    assert EMA.caller.get_weight(1) == Decimal('0.9997222609')
-
-    # check the biggest increment (tau * 4.5 -1)
-    # 1/e**x:                                                    0.0111120828
-    # pade(4):                                                   0.0111125709
-    assert EMA.caller.get_weight(int(tau * 9/2 - 1)) == Decimal('0.0111125709')
+    assert (TAU * 1/4) % 1 == 0
 
     # benchmark some points of interest
     benchmarks = {
         # 1/e**x:  0.7788007831
         # pade(0): 0.7788018433
-        1/4:      '0.7788018434',
+        1/4:      '0.7788018433',
 
         # 1/e**x:  0.6065306597
         # pade(1): 0.6065039436
@@ -54,8 +46,20 @@ def test_approximation(w3, EMA):
     }
     for benchmark, expected_value in benchmarks.items():
         print(f'Checking benchmark: {benchmark}.')
-        assert EMA.caller.get_weight(int(tau * benchmark)) == Decimal(expected_value)
+        assert EMA.caller.get_weight(int(TAU * benchmark)) == Decimal(expected_value)
 
-    # check that anything >= than tau * 4.5 has weight 0
-    assert EMA.caller.get_weight(int(tau * 9/2)) == Decimal('0')
-    assert EMA.caller.get_weight(int(tau * 5)) == Decimal('0')
+    # check some things specific to tau = 86400 #
+
+    # check the smallest increment (1)
+    # 1/e**x:                                   0.9999884260
+    # pade(0):                                  0.9999884260
+    assert EMA.caller.get_weight(1) == Decimal('0.9999884260')
+
+    # check the biggest increment (tau * 6.5 - 1)
+    # 1/e**x:                                                          0.0015034566
+    # pade(6):                                                         0.0015035228
+    assert EMA.caller.get_weight(int(TAU * (1/2 + 6) - 1)) == Decimal('0.0015035228')
+
+    # check that anything >= than tau * 6.5 has weight 0
+    assert EMA.caller.get_weight(int(TAU * (1/2 + 6))) == Decimal('0')
+    assert EMA.caller.get_weight(int(TAU * 7)) == Decimal('0')
