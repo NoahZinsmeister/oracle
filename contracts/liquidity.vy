@@ -8,7 +8,7 @@ cumulative_liquidity: Liquidity # cumulative blockwise liquidity up to (non-incl
 
 
 # @dev Construct a Liquidity struct.
-@public
+@private
 @constant
 def get_liquidity(eth_amount: uint256, token_amount: uint256, block_number: uint256) -> Liquidity:
     return Liquidity({eth_amount: eth_amount, token_amount: token_amount, block_number: block_number})
@@ -58,7 +58,7 @@ def trade(eth_amount_DEV: uint256, token_amount_DEV: uint256):
 @public
 @constant
 def get_cumulative_liquidity(eth_amount_DEV: uint256, token_amount_DEV: uint256) -> Liquidity:
-   # if self.last_liquidity is old, mock what it should be, else report the already calculated value
+    # if self.last_liquidity is old, mock what it should be, else report the already calculated value
     if self.cumulative_liquidity.block_number < block.number:
         eth_amount: uint256 = eth_amount_DEV
         token_amount: uint256 = token_amount_DEV

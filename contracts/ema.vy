@@ -17,7 +17,7 @@ average_price: Price # the ema up to (non-inclusive) the timestamp of the most r
 
 
 # @dev Construct a Price struct.
-@public
+@private
 @constant
 def get_price(price: decimal, time: timestamp) -> Price:
     return Price({price: price, time: time})

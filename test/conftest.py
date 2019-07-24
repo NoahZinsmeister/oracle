@@ -53,11 +53,3 @@ def LIQUIDITY(w3):
         address=tx_receipt.contractAddress,
         abi=deploy.abi
     )
-
-
-@pytest.fixture
-def assert_fail():
-    def assert_fail(func):
-        with pytest.raises(Exception):
-            func()
-    return assert_fail
