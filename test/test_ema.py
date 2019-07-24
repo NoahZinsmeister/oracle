@@ -3,7 +3,7 @@ from decimal import Decimal
 from constants import TAU
 
 
-def test_approximation(w3, EMA):
+def test_ema(w3, EMA):
     # check some general properties (relies on largest approximation being centered around 6) #
     assert (TAU * 1/2) % 1 == 0
 

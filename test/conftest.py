@@ -36,7 +36,18 @@ def w3(tester):
 @pytest.fixture
 def EMA(w3):
     deploy = create_contract(w3, 'contracts/ema.vy')
-    tx_hash = deploy.constructor(TAU).transact()
+    tx_hash = deploy.constructor(TAU, 1, 1).transact()
+    tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
+    return w3.eth.contract(
+        address=tx_receipt.contractAddress,
+        abi=deploy.abi
+    )
+
+
+@pytest.fixture
+def LIQUIDITY(w3):
+    deploy = create_contract(w3, 'contracts/liquidity.vy')
+    tx_hash = deploy.constructor(0, 0).transact()
     tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
     return w3.eth.contract(
         address=tx_receipt.contractAddress,
