@@ -12,8 +12,8 @@ struct Price:
     time: timestamp
 
 
-tau: public(timedelta) # the time period (in seconds) of our ema
-average_price: Price # the ema up to (non-inclusive) the timestamp of the most recent block with a trade
+tau: public(timedelta) # the time period (in seconds) of the ema
+price_average: Price # the ema up to the timestamp of the most recent block with a trade
 
 
 # @dev Construct a Price struct.
@@ -23,18 +23,28 @@ def get_price(price: decimal, time: timestamp) -> Price:
     return Price({price: price, time: time})
  
 
-# @dev Calculate the price for the specified liquidity pool size.
-@public
+# @dev Calculate the price for a specified liquidity pool size.
+@private
 @constant
-def get_price_from_liquidity(eth_amount: uint256, token_amount: uint256, time: timestamp) -> Price:
-    return self.get_price(convert(eth_amount, decimal) / convert(token_amount, decimal), time)
+def get_price_from_liquidity(amount_eth: uint256, amount_token: uint256, time: timestamp) -> Price:
+    price: decimal = convert(amount_eth, decimal) / convert(amount_token, decimal)
+    return self.get_price(price, time)
 
 
-# @dev Calculate the weight which our new ema should give to the current ema vs the latest value.
+# @dev ETH/Token amounts should be interpreted as the amounts on the first addition of liquidity.
+@public
+def __init__(_tau: timedelta, amount_eth_initial: uint256, amount_token_initial: uint256):
+    self.tau = _tau
+    # initialize the ema (replicate self.get_price_from_liquidity)
+    price: decimal = convert(amount_eth_initial, decimal) / convert(amount_token_initial, decimal)
+    self.price_average = Price({price: price, time: block.timestamp})
+
+
+# @dev Calculate the weight to assign to the current ema vs the latest observation.
 @public
 @constant
-def get_weight(elapsed_time: timedelta) -> decimal:
-    x: decimal = convert(as_unitless_number(elapsed_time), decimal) / convert(as_unitless_number(self.tau), decimal)
+def get_weight(time_elapsed: timedelta) -> decimal:
+    x: decimal = convert(as_unitless_number(time_elapsed), decimal) / convert(as_unitless_number(self.tau), decimal)
 
     # compute (2, 2) padé approximant of e^-x around x = 0, 1, 2, 3, 4, 5, 6...
     # ...for x >= 6.5, truncate to w = 0 i.e. for weights guaranteed to be <~.15%
@@ -59,52 +69,32 @@ def get_weight(elapsed_time: timedelta) -> decimal:
     return w
 
 
-
-@public
-def __init__(_tau: timedelta, eth_amount_DEV: uint256, token_amount_DEV: uint256):
-    self.tau = _tau
-    eth_amount: uint256 = eth_amount_DEV
-    token_amount: uint256 = token_amount_DEV
-    self.average_price = Price({
-        price: convert(eth_amount, decimal) / convert(token_amount, decimal), time: block.timestamp
-    })
-
-
-# @dev Increment our ema.
+# @dev Increment the ema.
 @public
 @constant
-def get_next_average_price(last_average_price: Price, last_price: Price) -> Price:
-    w: decimal = self.get_weight(last_price.time - last_average_price.time)
-    next_price: decimal = (w * last_average_price.price) + ((1.0 - w) * last_price.price)
-    next_time: timestamp = last_price.time
-    return self.get_price(next_price, next_time)
+def get_price_average_next(price_current: Price) -> Price:
+    w: decimal = self.get_weight(price_current.time - self.price_average.time)
+    price_next: decimal = (w * self.price_average.price) + ((1.0 - w) * price_current.price)
+    time_next: timestamp = price_current.time
+    return self.get_price(price_next, time_next)
 
 
-# @dev Simulate trading. Liquidity values passed in for illustrative purposes.
+# @dev Simulate trading. ETH/Token amounts should be interpreted as the amounts currently in the contract.
 @public
-def trade(eth_amount_DEV: uint256, token_amount_DEV: uint256):
-    # if self.average_price is old, i.e. this is the first trade in this block...
-    if self.average_price.time < block.timestamp:
-        # ...update self.average_price with current price i.e. as of after the last trade of the most recent block
-        eth_amount: uint256 = eth_amount_DEV
-        token_amount: uint256 = token_amount_DEV
-        self.average_price = self.get_next_average_price(
-            self.average_price,
-            self.get_price_from_liquidity(eth_amount, token_amount, block.timestamp)
-        )
+def trade(amount_eth_current: uint256, amount_token_current: uint256):
+    # if self.price_average is stale i.e. it hasn't been updated this block i.e. this is the first trade of the block...
+    if block.timestamp > self.price_average.time:
+        # ...update self.price_average with current price i.e. price as of after the last trade of the most recent block
+        price_current: Price = self.get_price_from_liquidity(amount_eth_current, amount_token_current, block.timestamp)
+        self.price_average = self.get_price_average_next(price_current)
 
 
-# @dev Get the latest ema.
+# @dev Get the latest ema. ETH/Token amounts should be interpreted as the amounts currently in the contract.
 @public
 @constant
-def get_average_price(eth_amount_DEV: uint256, token_amount_DEV: uint256) -> Price:
-   # if self.average_price is old, mock what it should be, else report the already calculated value
-    if self.average_price.time < block.timestamp:
-        eth_amount: uint256 = eth_amount_DEV
-        token_amount: uint256 = token_amount_DEV
-        return self.get_next_average_price(
-            self.average_price,
-            self.get_price_from_liquidity(eth_amount, token_amount, block.timestamp)
-        )
+def get_price_average(amount_eth_current: uint256, amount_token_current: uint256) -> Price:
+    if block.timestamp > self.price_average.time:
+        price_current: Price = self.get_price_from_liquidity(amount_eth_current, amount_token_current, block.timestamp)
+        return self.get_price_average_next(price_current)
     else:
-        return self.average_price
+        return self.price_average

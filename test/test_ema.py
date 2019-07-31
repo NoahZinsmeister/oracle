@@ -1,18 +1,16 @@
 from decimal import Decimal
 
-from constants import TAU
+from .constants import TAU
 
 
 def test_ema(w3, EMA):
     # check some general properties (relies on largest approximation being centered around 6) #
-    assert (TAU * 1/2) % 1 == 0
 
     # make sure our approximation is monotonic around the bounds
+    assert (TAU * 1/2) % 1 == 0
     for boundary_check in [1/2 + x for x in range(0, 7)]:
         print(f'Checking boundary: {boundary_check}.')
         assert EMA.caller.get_weight(int(TAU * boundary_check) - 1) > EMA.caller.get_weight(int(TAU * boundary_check))
-
-    assert (TAU * 1/4) % 1 == 0
 
     # benchmark some points of interest
     benchmarks = {
@@ -44,6 +42,7 @@ def test_ema(w3, EMA):
         # pade(3): 0.0497870684
         3:        '0.0497870683'
     }
+    assert (TAU * 1/4) % 1 == 0
     for benchmark, expected_value in benchmarks.items():
         print(f'Checking benchmark: {benchmark}.')
         assert EMA.caller.get_weight(int(TAU * benchmark)) == Decimal(expected_value)

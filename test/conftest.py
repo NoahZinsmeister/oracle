@@ -6,7 +6,7 @@ import eth_tester
 from eth_tester import EthereumTester, PyEVMBackend
 from vyper import compiler
 
-from constants import TAU
+from .constants import TAU
 
 setattr(eth_tester.backends.pyevm.main, 'GENESIS_GAS_LIMIT', 10**9)
 setattr(eth_tester.backends.pyevm.main, 'GENESIS_DIFFICULTY', 1)
@@ -47,7 +47,18 @@ def EMA(w3):
 @pytest.fixture
 def LIQUIDITY(w3):
     deploy = create_contract(w3, 'contracts/liquidity.vy')
-    tx_hash = deploy.constructor(0, 0).transact()
+    tx_hash = deploy.constructor(1, 1).transact()
+    tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
+    return w3.eth.contract(
+        address=tx_receipt.contractAddress,
+        abi=deploy.abi
+    )
+
+
+@pytest.fixture
+def TWA_EXTERNAL(w3, LIQUIDITY):
+    deploy = create_contract(w3, 'contracts/twa_external.vy')
+    tx_hash = deploy.constructor(LIQUIDITY.address, 1, 1, TAU).transact()
     tx_receipt = w3.eth.getTransactionReceipt(tx_hash)
     return w3.eth.contract(
         address=tx_receipt.contractAddress,
